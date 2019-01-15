@@ -1,0 +1,117 @@
+#!/usr/bin/env sh
+#
+#by necronoise
+
+clear &&
+
+host="$(hostname)"
+up="$(uptime -p | sed 's/up //')"
+distro="$(sed -rn '/^NAME/ s/^NAME="?([a-z A-Z]+).?$/\1/p' /etc/os-release)"
+kernel="$(uname -r)"
+shell="$(basename $SHELL)"
+
+get_ppid="$(sed -rn 's/^PPid:\s+([[:digit:]]+)/\1/p' "/proc/${PPID}/status")"
+get_term="$(cat "/proc/${get_ppid}/comm")"
+term="$( if [ "$get_term" = "login" \
+-o "$get_term" = "Login" \
+-o "$get_term" = "init" \
+-o "$get_term" = "(init)" ];then
+	printf "$(tty)"
+else
+	printf "${get_term}"
+fi)"
+
+packages="$(
+PACK=$(type apt xbps-query emerge pacman nix-env rpm apk cave gaze 2>/dev/null | grep '\/')
+PACK="${PACK##*/}"
+if [ "$PACK" = 'apt' ]; then
+	dpkg -l | wc -l
+elif [ "$PACK" = 'xbps-query' ];then
+	xbps-query -l | wc -l
+elif [ "$PACK" = 'emerge' ];then
+	ls -d /var/db/pkg/*/* | wc -l
+elif [ "$PACK" = 'pacman' ];then
+	pacman -Q | wc -l
+elif [ "$PACK" = 'nix-env' ];then
+	ls -d -1 /nix/store/ | wc -l
+elif [ "$PACK" = 'rpm' ];then
+	rpm -qa | wc -l
+elif [ "$PACK" = 'apk' ];then
+	apk info | wc -l
+elif [ "$PACK" = 'cave' ];then
+	xpkgs=$(ls -d -1 /var/db/paludis/repositories/cross-installed/*/data/* | wc -l)
+	pkgs=$(ls -d -1 /var/db/paludis/repositories/installed/data/* | wc -l)
+	printf $((pkgs + xpkgs))
+elif [ "$PACK" = 'gaze' ];then
+	gaze installed | wc -l
+fi
+)"
+
+wm="$(
+if [ ! -z "$DISPLAY" ]; then
+# check if xprop is installed
+if [ ! -z "$(type xprop)" ]; then
+	id="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)"
+	id="${id##* }"
+	if printf "$id" | grep -q "^[[:digit:]]\+$"; then
+		wm="$(xprop -id "$id" -notype -len 100 -f _NET_WM_NAME 8t)"
+		wm="$(printf '%s\n' "$wm" | sed -nr '/_NET_WM_NAME/ s/^.*"([a-zA-Z0-9 ()]+)"/\1/p')"
+		printf "$wm"
+	fi
+fi
+
+# if xprop is not installed or occur any errors, look for process
+[ -z "$wm" ] && \
+	ps -e | grep -v 'grep' | grep -m 1 -o -F \
+	-e "i3" \
+	-e "bspwm" \
+	-e "dwm" \
+	-e "xmonad" \
+	-e "windowchef" \
+	-e "openbox" \
+	-e "fluxbox" \
+	-e "spectrwm" \
+	-e "awesome" \
+	-e "dwm" \
+	-e "2bwm" \
+	-e "herbstluftwm" \
+	-e "monsterwm"
+else
+		printf 'none'
+fi)"
+
+# get random number for color
+rand="$(awk -v min=1 -v max=6 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')"
+
+f1=$(printf '%b' "\33[3${rand}m")
+f2=$(printf '%b' "\33[37m")
+
+b=$(printf '%b' "\33[1m")
+t=$(printf '%b' "\33[0m")
+
+g1=$(printf '%b' "\33[01;31m")
+g2=$(printf '%b' "\33[01;32m")
+g3=$(printf '%b' "\33[01;33m")
+g4=$(printf '%b' "\33[01;34m")
+g5=$(printf '%b' "\33[01;35m")
+g6=$(printf '%b' "\33[01;36m")
+g7=$(printf '%b' "\33[01;37m")
+
+# start
+clear
+if true; then
+cat << EOF
+${b}${f1}     -´´         ´.       ${f1}${USER}${f2}@${f1}${host}
+${b}${f1}    /              \\      OS:             ${b}${f2}${distro} 
+${b}${f1}   /              . \\     KERNEL:         ${b}${f2}${kernel}
+${b}${f1}   |     '       /  |     UPTIME:         ${b}${f2}${up}
+${b}${f1}   /__      ___ (   /     PACKAGES:       ${b}${f2}${packages} 
+${b}${f1}   \\\--\-´-l´---\\\ |      SHELL:          ${b}${f2}${shell}
+${b}${f1}    |'_/    ´ __/./       WM:             ${b}${f2}${wm}
+${b}${f1}    ´._  W    ,--´        TERM:           ${b}${f2}${term}
+${b}${f1}       |_:_._/            ${t}  
+                          ${b}${g1}████${b}${g2}████${b}${g3}████${b}${g4}████${b}${g5}████${b}${g6}████${b}${g7}████
+
+EOF
+fi
+sleep 1d
