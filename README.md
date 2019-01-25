@@ -1,4 +1,4 @@
 # nfetch
 fetch study
 
-![scrot](https://i.imgur.com/urIDHjC.png "Preview do fetch.")
+![scrot](https://i.imgur.com/MTbhL3V.png "Preview do fetch.")
